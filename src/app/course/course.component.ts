@@ -26,28 +26,34 @@ import { createHttpObservabes } from '../common/util';
 export class CourseComponent implements OnInit, AfterViewInit {
 
     course$: Observable<Course>;
+    courseId: string;
     lessons$: Observable<Lesson[]>;
+
     @ViewChild('searchInput') input: ElementRef;
 
     constructor(private route: ActivatedRoute) {}
 
     ngOnInit() {
-        const courseId = this.route.snapshot.params['id'];
-        this.course$ = createHttpObservabes(`/api/courses/${courseId}`);
-        this.lessons$ = createHttpObservabes(`/api/lessons?courseId=${courseId}&pageSize=100`)
-        .pipe(
-            map(res => res['payload'])
-        );
+        this.courseId = this.route.snapshot.params['id'];
+        this.course$ = createHttpObservabes(`/api/courses/${this.courseId}`);
     }
 
     ngAfterViewInit() {
-        fromEvent<any>(this.input.nativeElement, 'keyup')
+        this.lessons$ = fromEvent<any>(this.input.nativeElement, 'keyup')
         .pipe(
             map(event => event.target.value),
+            startWith(''),
             debounceTime(400),
-            distinctUntilChanged()
-        )
-        .subscribe(console.log);
+            distinctUntilChanged(),
+            switchMap(search => this.loadLessons(search))
+        );
+    }
+
+    loadLessons(search = ''): Observable<Lesson[]> {
+        return createHttpObservabes(`/api/lessons?courseId=${this.courseId}&pageSize=100&filter=${search}`)
+        .pipe(
+            map(res => res['payload'])
+        );
     }
 
 
